@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"imitate_gin/igin"
 	"net/http"
 )
@@ -9,14 +8,12 @@ import (
 func main() {
 	server := igin.NewEngine()
 
-	server.GET("/", func(writer http.ResponseWriter, request *http.Request) {
-		fmt.Fprintf(writer, "URL.Path = %q\n", request.URL.Path)
+	server.GET("/", func(ctx *igin.Context) {
+		ctx.HTML(http.StatusOK, "<h1>Hello World</h1>")
 	})
 
-	server.GET("/hello", func(writer http.ResponseWriter, request *http.Request) {
-		for k, v := range request.Header {
-			fmt.Fprintf(writer, "Header[%q] = %q\n", k, v)
-		}
+	server.GET("/hello", func(ctx *igin.Context) {
+		ctx.String(http.StatusOK, "hello %s, you're at %s\n", ctx.Query("name"), ctx.Path)
 	})
 
 	server.Run(":8080")
