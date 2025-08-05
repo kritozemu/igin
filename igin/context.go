@@ -20,6 +20,10 @@ type Context struct {
 
 	// response info
 	StatusCode int
+
+	//middlewares
+	handlers []HandlerFunc
+	index    int
 }
 
 func NewContext(w http.ResponseWriter, req *http.Request) *Context {
@@ -28,7 +32,21 @@ func NewContext(w http.ResponseWriter, req *http.Request) *Context {
 		Req:    req,
 		Path:   req.URL.Path,
 		Method: req.Method,
+		index:  -1,
 	}
+}
+
+func (c *Context) Next() {
+	c.index++
+	s := len(c.handlers)
+	for ; c.index < s; c.index++ {
+		c.handlers[c.index](c)
+	}
+}
+
+func (c *Context) Fail(code int, err string) {
+	c.index = len(c.handlers)
+	c.JSON(code, H{"message": err})
 }
 
 func (c *Context) Param(key string) string {
@@ -59,7 +77,7 @@ func (c *Context) String(code int, format string, values ...any) {
 	c.Writer.Write([]byte(fmt.Sprintf(format, values...)))
 }
 
-func (c *Context) Json(code int, obj any) {
+func (c *Context) JSON(code int, obj any) {
 	c.SetHeader("Content-Type", "application/json")
 	c.Status(code)
 	encoder := json.NewEncoder(c.Writer)
