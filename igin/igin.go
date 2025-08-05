@@ -32,6 +32,12 @@ func NewEngine() *Engine {
 	return engine
 }
 
+func Default() *Engine {
+	engine := NewEngine()
+	engine.Use(Logger(), Recovery())
+	return engine
+}
+
 func (g *RouterGroup) createStaticHandler(relativePath string, fs http.FileSystem) HandlerFunc {
 	absolutePath := path.Join(g.prefix, relativePath)
 	fileServer := http.StripPrefix(absolutePath, http.FileServer(fs))
