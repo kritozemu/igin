@@ -1,33 +1,57 @@
 package igin
 
 import (
+	"log"
 	"net/http"
 )
 
 type HandlerFunc func(ctx *Context)
 
+type RouterGroup struct {
+	prefix      string
+	engine      *Engine
+	middlewares []HandlerFunc
+	parent      *RouterGroup
+}
+
 type Engine struct {
 	router *router
+	*RouterGroup
+	groups []*RouterGroup //store all groups
 }
 
 func NewEngine() *Engine {
-	return &Engine{router: newRouter()}
+	engine := &Engine{router: newRouter()}
+	engine.RouterGroup = &RouterGroup{engine: engine}
+	engine.groups = []*RouterGroup{engine.RouterGroup}
+	return engine
 }
 
-func (e *Engine) addRoute(method string, path string, hf HandlerFunc) {
-	e.router.addRoute(method, path, hf)
+func (g *RouterGroup) Group(prefix string) *RouterGroup {
+	engine := g.engine
+	newGroup := &RouterGroup{
+		prefix: g.prefix + prefix,
+		engine: engine,
+		parent: g,
+	}
+	engine.groups = append(engine.groups, newGroup)
+	return newGroup
 }
 
-func (e *Engine) GET(path string, hf HandlerFunc) {
-	e.addRoute(http.MethodGet, path, hf)
+func (g *RouterGroup) addRoute(method string, comp string, handler HandlerFunc) {
+	pattern := g.prefix + comp
+	log.Printf("Route %4s - %s", method, pattern)
+	g.engine.router.addRoute(method, pattern, handler)
 }
 
-func (e *Engine) POST(path string, hf HandlerFunc) {
-	e.addRoute(http.MethodPost, path, hf)
+// GET defines the method to add GET request
+func (g *RouterGroup) GET(pattern string, handler HandlerFunc) {
+	g.addRoute("GET", pattern, handler)
 }
 
-func (e *Engine) DELETE(path string, hf HandlerFunc) {
-	e.addRoute(http.MethodDelete, path, hf)
+// POST defines the method to add POST request
+func (g *RouterGroup) POST(pattern string, handler HandlerFunc) {
+	g.addRoute("POST", pattern, handler)
 }
 
 func (e *Engine) Run(addr string) (err error) {
