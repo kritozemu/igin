@@ -1,8 +1,10 @@
 package igin
 
 import (
+	"html/template"
 	"log"
 	"net/http"
+	"path"
 	"strings"
 )
 
@@ -18,6 +20,9 @@ type Engine struct {
 	router *router
 	*RouterGroup
 	groups []*RouterGroup //store all groups
+
+	htmlTemplates *template.Template //for html render
+	funcMap       template.FuncMap   //for html render
 }
 
 func NewEngine() *Engine {
@@ -25,6 +30,33 @@ func NewEngine() *Engine {
 	engine.RouterGroup = &RouterGroup{engine: engine}
 	engine.groups = []*RouterGroup{engine.RouterGroup}
 	return engine
+}
+
+func (g *RouterGroup) createStaticHandler(relativePath string, fs http.FileSystem) HandlerFunc {
+	absolutePath := path.Join(g.prefix, relativePath)
+	fileServer := http.StripPrefix(absolutePath, http.FileServer(fs))
+	return func(ctx *Context) {
+		file := ctx.Param("filepath")
+		if _, err := fs.Open(file); err != nil {
+			ctx.Status(http.StatusNotFound)
+			return
+		}
+		fileServer.ServeHTTP(ctx.Writer, ctx.Req)
+	}
+}
+
+func (g *RouterGroup) Static(relativePath string, root string) {
+	handler := g.createStaticHandler(relativePath, http.Dir(root))
+	urlPath := path.Join(relativePath, "/*filepath")
+	g.GET(urlPath, handler)
+}
+
+func (e *Engine) SetFuncMap(funcMap template.FuncMap) {
+	e.funcMap = funcMap
+}
+
+func (e *Engine) LoadHTMLGlob(pattern string) {
+	e.htmlTemplates = template.Must(template.New("").Funcs(e.funcMap).ParseGlob(pattern))
 }
 
 func (g *RouterGroup) Group(prefix string) *RouterGroup {
@@ -70,5 +102,6 @@ func (e *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	ctx := NewContext(w, req)
 	ctx.handlers = middlewares
+	ctx.engine = e
 	e.router.handle(ctx)
 }
