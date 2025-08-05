@@ -49,13 +49,13 @@ import (
 func main() {
 	r := igin.Default()
 	r.GET("/", func(c *igin.Context) {
-		c.String(http.StatusOK, "Hello Geektutu\n")
+		c.String(http.StatusOK, "Hello IGIN\n")
 	})
 	// index out of range for testing Recovery()
 	r.GET("/panic", func(c *igin.Context) {
-		names := []string{"geektutu"}
+		names := []string{"IGIN"}
 		c.String(http.StatusOK, names[100])
 	})
 
-	r.Run(":9999")
+	r.Run(":8080")
 }
